@@ -89,8 +89,8 @@ let
     plot_polys(polys)
     #@infiltrate
     # ego vic prism
-    P_vic =  dc.ConeMRP(.5, deg2rad(22))
-    # dc.create_rect_prism(0.5, 0.1, 0.1)[1]
+    #P_vic =  dc.ConeMRP(.5, deg2rad(22))
+    dc.create_rect_prism(0.5, 0.1, 0.1)[1]
 
     #P_obs = map(polys) do p
     #    A = zeros(6,3)
@@ -105,11 +105,11 @@ let
     P_obs = map(polys) do p
         #@infiltrate
         A = hcat(Matrix(p.A), zeros(side_count, 1))
-        A = vcat(A, [0,0,-1]')
-        A = vcat(A, [0,0,1]')
-        b = vcat(p.b, .5)
-        b = vcat(b, .5)
-        dc.PolytopeMRP(SMatrix{side_count + 2, 3}(A), SVector{side_count + 2}(b))
+        A = vcat(A, [0, 0, -1]')
+        A = vcat(A, [0, 0, 1]')
+        b = vcat(p.b, 0.5)
+        b = vcat(b, 0.5)
+        dc.PolytopeMRP(SMatrix{side_count + 2,3}(A), SVector{side_count + 2}(b))
     end
 
     ## create edges of polys
@@ -223,7 +223,7 @@ let
     # dc.set_floor!(vis; darkmode = false)
 
     for i = 1:length(P_obs)
-        dc.build_primitive!(vis, P_obs[i], Symbol("P" * string(i)); α=1.0, color=mc.RGBA(0, 0, 0, .5))
+        dc.build_primitive!(vis, P_obs[i], Symbol("P" * string(i)); α=1.0, color=mc.RGBA(0, 0, 0, 0.5))
         dc.update_pose!(vis[Symbol("P" * string(i))], P_obs[i])
     end
     dc.build_primitive!(vis, P_vic, :vic; α=1.0, color=mc.RGBA(1, 0, 0, 1.0))
