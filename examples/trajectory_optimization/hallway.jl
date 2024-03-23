@@ -12,7 +12,7 @@ using SparseArrays
 import MeshCat as mc
 import Random
 using Colors
-using Infiltrator
+
 
 include("poly_functions.jl")
 
@@ -28,7 +28,7 @@ function dynamics(p::NamedTuple, x, u, k)
         v
         u[1:2]
         ω
-        u[3] / 100
+        u[3] / 10
     ]
 end
 function discrete_dynamics(p::NamedTuple, x, u, k)
@@ -66,45 +66,39 @@ let
     nu = 3
     N = 80
     dt = 0.1
-    x0 = [-3.0, 3.0, 0, 0, 0, 0]
-    xg = [-1.75, 2.2, 0, 0, 0, 0]
+    x0 = [1.5, 1.5, 0, 0, 0, 0]
+    xg = [3.5, 3.7, 0, 0, deg2rad(90), 0]
     Xref = [copy(xg) for i = 1:N]
     Uref = [zeros(nu) for i = 1:N]
-    Q = Diagonal(ones(nx))
-    Qf = Diagonal(ones(nx))
-    R = 1 * Diagonal([1, 1, 0.00])
-
-    # before:
-    #P_obs = [dc.create_rect_prism(3.0, 3.0, 1.0)[1],
-    #    dc.create_rect_prism(4.0, 1.0, 1.0)[1],
-    #    dc.create_rect_prism(1.0, 5.0, 1.1)[1]]
-    #P_obs[1].r = SA[1.5, 3.5, 0.0]
-    #P_obs[2].r = SA[2, 0.5, 0]
-    #P_obs[3].r = SA[4.5, 2.5, 0]
+    Q = zeros(nx, nx)
+    Q[1, 1] = 0.01
+    Q[2, 2] = 0.01
+    Qf = zeros(nx, nx)
+    Qf[1, 1] = 0.001
+    Qf[2, 2] = 0.001
+    R = 0.01 * Diagonal(ones(3))
 
     # create polys
     side_count = 4
-    poly_count = 3
-    polys = gen_polys(poly_count; side_count)
+    #poly_count = 8
+    #polys = gen_polys(poly_count; side_count)
+    polys = gen_hallway()
     plot_polys(polys)
-    #@infiltrate
-    # ego vic prism
-    P_vic =  dc.create_rect_prism(0.5, 0.1, 0.1)[1] 
-    #dc.ConeMRP(.5, deg2rad(22))
-    
 
-    #P_obs = map(polys) do p
-    #    A = zeros(6,3)
-    #    b = zeros(6)
-    #    #A = SMatrix{3,2}(p.A)
-    #    #b = SVector{3}(p.b)
+    ego_poly = ConvexPolygon2D([[-0.5,0.55],[-0.55,0],[1.0,0],[1.0,0.5]])
 
-    #    dc.Polytope(A, b)
-    #end
-    #@infiltrate
+    P_vic = let p
+        A = hcat(Matrix(ego_poly.A), zeros(side_count, 1))
+        A = vcat(A, [0, 0, -1]')
+        A = vcat(A, [0, 0, 1]')
+        b = vcat(ego_poly.b, 0.25)
+        b = vcat(b, 0.25)
+        p = dc.PolytopeMRP(SMatrix{side_count + 2,3}(A), SVector{side_count + 2}(b))
+    end
+        # ego_polys[1]
+    #dc.create_rect_prism(0.5, 0.1, 0.1)[1]
 
     P_obs = map(polys) do p
-        #@infiltrate
         A = hcat(Matrix(p.A), zeros(side_count, 1))
         A = vcat(A, [0, 0, -1]')
         A = vcat(A, [0, 0, 1]')
@@ -113,47 +107,14 @@ let
         dc.PolytopeMRP(SMatrix{side_count + 2,3}(A), SVector{side_count + 2}(b))
     end
 
-    ## create edges of polys
-    ## calculate edge lengths
-    #function get_edge_len(verts)
-    #    verts_shiftd = circshift(verts, 1)
-    #    sqrt.((getindex.(verts, 1) - getindex.(verts_shiftd, 1)) .^ 2 + (getindex.(verts, 2) - getindex.(verts_shiftd, 2)) .^ 2)
-    #end
-    ##@infiltrate
-    ## calculate edge angles
-    #function get_edge_ang(verts)
-    #    verts_shiftd = circshift(verts, 1)
-    #    atan.(getindex.(verts, 2) - getindex.(verts_shiftd, 2), getindex.(verts, 1) - getindex.(verts_shiftd, 1))
-    #end
-
-    #all_lens = reduce(vcat, map(polys) do p
-    #    get_edge_len(p.V)
-    #end)
-
-    #P_obs = reduce(vcat, map(all_lens) do lens
-    #    map(lens) do l
-    #        dc.create_rect_prism(l, 0.1, 1)[1]
-    #    end
-    #end)
-
-    ## set positions and angles
-    #all_verts = reduce(vcat, map(p -> p.V, polys))
-
-    #all_angs = reduce(vcat, map(polys) do p
-    #    get_edge_ang(p.V)
-    #end)
-
-    ##@infiltrate
-    #for (p, v, d, θ) in zip(P_obs, all_verts, all_lens, all_angs)
-    #    p.r = SA[v[1]-d/2*cos(θ), v[2]-d/2*sin(θ), 0.0]
-    #    p.p = dc.mrp_from_q(SA[cos(θ / 2), 0, 0, sin(θ / 2)])
-    #end
 
     u_min = -200 * ones(nu)
     u_max = 200 * ones(nu)
 
     x_min = -200 * ones(nx)
     x_max = 200 * ones(nx)
+
+
 
     ncx = length(P_obs)
     ncu = 2 * nu
@@ -201,29 +162,19 @@ let
     mc.setprop!(vis["/Background"], "bottom_color", mc.RGB(1, 1, 1))
     mc.setvisible!(vis["/Axes"], false)
     mc.setvisible!(vis["/Grid"], false)
-
-
-    #P_obs_vis = reduce(vcat, map(edge_lens) do lens
-    #    map(lens) do l
-    #        dc.create_rect_prism(l, 1.0, 1.0)[1]
-    #    end
-    #end)
-
     #wall_w = 0.2
-    #P_obs = [dc.create_rect_prism(4.0 + wall_w, wall_w, 0.01)[1],
-    #    dc.create_rect_prism(3.0, wall_w, 0.01)[1],
-    #    dc.create_rect_prism(wall_w, 3.0, 0.01)[1],
-    #    dc.create_rect_prism(wall_w, 4.0, 0.01)[1],
-    #    dc.create_rect_prism(wall_w, 5.0, 0.01)[1]]
+    #P_obs = [dc.create_rect_prism(4.0 + wall_w, wall_w, .01)[1],
+    #         dc.create_rect_prism(3.0, wall_w, .01)[1],
+    #         dc.create_rect_prism(wall_w, 3.0, .01)[1],
+    #         dc.create_rect_prism(wall_w, 4.0, .01)[1]]
 
-    #P_obs[1].r = SA[2.0+wall_w/2, 1, 0.0] - [0, wall_w / 2, 0]
-    #P_obs[2].r = SA[1.5, 2.0, 0] + [0, wall_w / 2, 0]
-    #P_obs[3].r = SA[3, 3.5, 0] - [wall_w / 2, 0, 0]
-    #P_obs[4].r = SA[4, 3.0, 0] + [wall_w / 2, 0, 0]
-    #P_obs[5].r = SA[5, 3.0, 0] + [wall_w / 2, 0, 0]
+    #P_obs[1].r = SA[2.0+wall_w/2,1,0.0] - [0,wall_w/2,0]
+    #P_obs[2].r = SA[1.5,2.0,0] + [0,wall_w/2,0]
+    #P_obs[3].r = SA[3,3.5,0] - [wall_w/2,0,0]
+    #P_obs[4].r = SA[4,3.0,0] +[wall_w/2,0,0]
     # dc.set_floor!(vis; darkmode = false)
 
-    for i = 1:length(P_obs)
+    for i = 1:4
         dc.build_primitive!(vis, P_obs[i], Symbol("P" * string(i)); α=1.0, color=mc.RGBA(0, 0, 0, 0.5))
         dc.update_pose!(vis[Symbol("P" * string(i))], P_obs[i])
     end
