@@ -92,16 +92,25 @@ function plot_polys(polys)
     display(fig)
 end
 
-function gen_polys(N; side_count=4)
+function gen_polys(N; side_length=4)
 
     polys = map(1:N) do i
-		rng = Random.MersenneTwister(i);
-        P = ConvexPolygon2D([randn(rng, 2) + [0,0] for _ in 1:side_count]);
-        while length(P.V) != side_count
-            P = ConvexPolygon2D([randn(rng, 2) + [0,0] for _ in 1:side_count]);
+        offset = 0*3.5*randn(2)
+        rng = Random.MersenneTwister(69+i);
+        P = ConvexPolygon2D([randn(rng, 2) + offset for _ in 1:side_length]);
+        while length(P.V) != side_length
+            P = ConvexPolygon2D([randn(rng, 2) + offset for _ in 1:side_length]);
         end
         P
     end
+    #polys = map(1:N) do i
+	#	rng = Random.MersenneTwister(i);
+    #    P = ConvexPolygon2D([randn(rng, 2) + [0,0] for _ in 1:side_length]);
+    #    while length(P.V) != side_length
+    #        P = ConvexPolygon2D([randn(rng, 2) + [0,0] for _ in 1:side_length]);
+    #    end
+    #    P
+    #end
 end
 
 function GLMakie.plot!(ax, P::ConvexPolygon2D; kwargs...)

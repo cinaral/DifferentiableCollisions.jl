@@ -28,15 +28,16 @@ function dynamics(p::NamedTuple, x, u, k)
         v
         u[1:2]
         ω
-        u[3] / 100
-    ]
-end
-function discrete_dynamics(p::NamedTuple, x, u, k)
-    k1 = p.dt * dynamics(p, x, u, k)
-    k2 = p.dt * dynamics(p, x + k1 / 2, u, k)
-    k3 = p.dt * dynamics(p, x + k2 / 2, u, k)
-    k4 = p.dt * dynamics(p, x + k3, u, k)
-    x + (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
+        u[3] / 10
+        ]
+    end
+    function discrete_dynamics(p::NamedTuple, x, u, k)
+        k1 = p.dt * dynamics(p, x, u, k)
+        #k2 = p.dt * dynamics(p, x + k1 / 2, u, k)
+        #k3 = p.dt * dynamics(p, x + k2 / 2, u, k)
+        #k4 = p.dt * dynamics(p, x + k3, u, k)
+        #x + (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
+        x + p.dt * k1
 end
 
 function ineq_con_x(p, x)
@@ -70,9 +71,14 @@ let
     xg = [-1.75, 2.2, 0, 0, 0, 0]
     Xref = [copy(xg) for i = 1:N]
     Uref = [zeros(nu) for i = 1:N]
-    Q = Diagonal(ones(nx))
-    Qf = Diagonal(ones(nx))
-    R = 1 * Diagonal([1, 1, 0.00])
+    Q = zeros(nx, nx)
+    Q[1, 1] = 0.01
+    Q[2, 2] = 0.01
+    Qf = zeros(nx, nx)
+    Qf[1, 1] = 0.001
+    Qf[2, 2] = 0.001
+    R = 0.01 * Diagonal(ones(3))
+
 
     # before:
     #P_obs = [dc.create_rect_prism(3.0, 3.0, 1.0)[1],
@@ -84,9 +90,10 @@ let
 
     # create polys
     side_count = 4
-    poly_count = 3
-    polys = gen_polys(poly_count; side_count)
+    poly_count = 8
+    polys = gen_polys(poly_count; side_length=side_count)
     plot_polys(polys)
+    @infiltrate
     #@infiltrate
     # ego vic prism
     P_vic =  dc.create_rect_prism(0.5, 0.1, 0.1)[1] 
